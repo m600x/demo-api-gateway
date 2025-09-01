@@ -4,11 +4,11 @@
 
 ## Description
 This is a very basic python app that serve as an api gateway for LLM query.
+
+Built using Flask, it support the following:
 - `POST` on `/completion`, forwarded to ollama or send an altered prompt
 - `GET` on `/logs` to dump logs
 - `GET` on `/history` to dump completion logs
-
-Built using Flask, it support the following:
 - Three logger: stdout, file, history
 - Get or generate a *x-request-id* to track the lifecycle of a request
 - Calculate the latency of response

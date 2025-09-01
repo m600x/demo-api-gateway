@@ -1,0 +1,8 @@
+apiVersion: v2
+name: demo-api-gateway
+description: Demo API Gateway for LLM
+home: https://github.com/m600x/demo-api-gateway
+
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

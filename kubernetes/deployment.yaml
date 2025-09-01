@@ -1,0 +1,44 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-api-gateway
+  labels:
+    app: demo-api-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-api-gateway
+  template:
+    metadata:
+      labels:
+        app: demo-api-gateway
+    spec:
+      containers:
+        - name: demo-api-gateway
+          image: demo-api-gateway:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: OLLAMA_URL
+              value: ""
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /logs
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          volumeMounts:
+            - name: logs
+              mountPath: /logs
+      volumes:
+        - name: logs
+          emptyDir: {}

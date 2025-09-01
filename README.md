@@ -17,8 +17,8 @@ Built using Flask, it support the following:
 As for the Ops side (primary used Gitlab CI but since Github Actions seems to be the tool used here, I've adapted):
 - Kubernetes artifacts and Helm chart
 - CI: Test the app (pytest dummy)
-- CI: Test the Kubernetes YAML (deploy on kind)
-- CI: Test the Helm chart (deploy on kind)
+- CI: Test Kubernetes YAML and Helm chart (deploy on kind)
+- CI: Scan for vulnerability (only fail on critical with known fix)
 - CI: Build and push to docker hub
 
 ## Usage

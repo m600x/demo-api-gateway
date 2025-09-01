@@ -8,6 +8,7 @@ on:
 
 env:
   CONTAINER_NAME: demo-api-gateway
+  CONTAINER_TAG: ci
 
 jobs:
   app-test:
@@ -29,8 +30,48 @@ jobs:
       - name: Run tests
         run: pytest -v
 
+  kubernetes-test:
+    runs-on: ubuntu-latest
+    needs: app-test
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+
+      - name: Build image
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ${{ env.CONTAINER_NAME }}:${{ env.CONTAINER_TAG }}
+
+      - name: Ensure docker image is available
+        run: docker image ls
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: kind
+
+      - name: Load image into kind
+        run: kind load docker-image $CONTAINER_NAME:$CONTAINER_TAG
+
+      - name: Kubernetes YAML - Deploy CI image
+        run: |
+          kubectl set image -f kubernetes/deployment.yaml $CONTAINER_NAME=$CONTAINER_NAME:$CONTAINER_TAG --local -o yaml | kubectl apply -f -
+          kubectl apply -f kubernetes/service.yaml
+          kubectl rollout status deploy/demo-api-gateway --timeout=120s
+          kubectl get deployments -A
+          kubectl get services -A
+
   build-and-push:
     runs-on: ubuntu-latest
+    needs: kubernetes-test
     steps:
       - name: Checkout
         uses: actions/checkout@v5

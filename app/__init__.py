@@ -2,17 +2,20 @@ import os
 import logging
 import time
 import requests
+import uuid
 from datetime import datetime
 from flask import Flask, request, jsonify, g, has_request_context, make_response
 
 '''
-Custom logging filter to populate dynamic field per request (remote_addr)
+Custom logging filter to populate dynamic field per request (request_id and remote_addr)
 '''
 class CustomLoggingFilter(logging.Filter):
     def filter(self, record):
         if has_request_context():
+            record.request_id = getattr(g, "request_id", "NA")
             record.source_ip = getattr(g, "source_ip", "NA")
         else:
+            record.request_id = "-"
             record.source_ip = "-"
         return True
 
@@ -20,7 +23,7 @@ def create_app() -> Flask:
     app = Flask(__name__)
 
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
-    logFormatter = logging.Formatter("[%(asctime)s] [%(levelname)s] [%(source_ip)s] %(message)s")
+    logFormatter = logging.Formatter("[%(asctime)s] [%(levelname)s] [%(source_ip)s] [%(request_id)s] %(message)s")
     os.makedirs("/logs", exist_ok=True)
     root = logging.getLogger()
     root.handlers.clear()
@@ -43,6 +46,7 @@ def create_app() -> Flask:
 
     @app.before_request
     def before():
+        g.request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
         g.source_ip = request.remote_addr
         g.start_time = time.time() * 1000
         g.timestamp = datetime.utcnow().isoformat() + "Z"

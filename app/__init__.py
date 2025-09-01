@@ -1,5 +1,6 @@
 import os
 import logging
+import json
 import time
 import requests
 import uuid
@@ -27,7 +28,11 @@ def create_app() -> Flask:
     '''
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
     logFormatter = logging.Formatter("[%(asctime)s] [%(levelname)s] [%(source_ip)s] [%(request_id)s] %(message)s")
-    os.makedirs("/logs", exist_ok=True)
+    if os.path.exists("/.dockerenv"):
+        logs_dir = "/logs"
+    else:
+        logs_dir = os.path.join(os.getcwd(), "logs")
+    os.makedirs(logs_dir, exist_ok=True)
     root = logging.getLogger()
     root.handlers.clear()
     root.setLevel(logging.INFO)
@@ -39,9 +44,16 @@ def create_app() -> Flask:
     root.addHandler(consoleHandler)
 
     # File logger
-    fileHandler = logging.FileHandler("/logs/demo.log")
+    fileHandler = logging.FileHandler(os.path.join(logs_dir, "demo.log"))
     fileHandler.setFormatter(logFormatter)
     root.addHandler(fileHandler)
+
+    # Completion logger to keep an history of prompt
+    completionLogger = logging.getLogger("completion")
+    completionLogger.setLevel(logging.INFO)
+    completionLogger.propagate = False
+    completionHandler = logging.FileHandler(os.path.join(logs_dir, "completion.log"))
+    completionLogger.addHandler(completionHandler)
 
     if not os.getenv("OLLAMA_URL", "").strip():
         app.logger.warning("No Ollama URL has been provided, the endpoint will not forward the request")
@@ -64,6 +76,14 @@ def create_app() -> Flask:
     @app.after_request
     def after(resp):
         latency = int(round((time.time() * 1000) - g.start_time))
+        if hasattr(g, "prompt"):
+            completionLogger.info(json.dumps({
+                "timestamp": g.timestamp,
+                "origin":g.source_ip,
+                "latency": latency,
+                "prompt": g.prompt,
+                "completion": g.completion
+                }))
         app.logger.info("Processing ended with a latency of %dms", latency)
         return resp
 
@@ -80,7 +100,7 @@ def create_app() -> Flask:
     @app.get("/logs")
     def logs():
         try:
-            with open('/logs/demo.log', 'r') as file:
+            with open(os.path.join(logs_dir, "demo.log"), 'r') as file:
                 logs = file.read()
             resp = make_response(logs, 200)
             resp.mimetype = "text/plain"
@@ -89,6 +109,22 @@ def create_app() -> Flask:
         except Exception as e:
             app.logger.error("Error while reading log file: %s", e)
         return jsonify({"error": "Cannot access log file"}), 500
+
+    '''
+    Serve the completion history log file as plain text
+    '''
+    @app.get("/history")
+    def history():
+        try:
+            with open(os.path.join(logs_dir, "completion.log"), 'r') as file:
+                logs = file.read()
+            resp = make_response(logs, 200)
+            resp.mimetype = "text/plain"
+            app.logger.info("Returning completion history")
+            return resp
+        except Exception as e:
+            app.logger.error("Error while reading completion log file: %s", e)
+        return jsonify({"error": "Cannot access completion log file"}), 500
 
     '''
     Handle POST on /completion.

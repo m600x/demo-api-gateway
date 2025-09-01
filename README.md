@@ -19,7 +19,7 @@ As for the Ops side (primary used Gitlab CI but since Github Actions seems to be
 - CI: Test the app (pytest dummy)
 - CI: Test Kubernetes YAML and Helm chart (deploy on kind)
 - CI: Scan for vulnerability (only fail on critical with known fix)
-- CI: Build and push to docker hub
+- CI: Build and push to docker hub (with SLSA provenance)
 
 ## Usage
 
@@ -53,8 +53,9 @@ python3 -m flask --app app run --host=0.0.0.0 --port=8080
 ### Docker execution
 Using the public container:
 ```
-docker run -it --rm -p 8080:8080 -v ./logs:/logs -e OLLAMA_URL=$OLLAMA_URL m600x/demo-api-gateway:latest
+docker run -it --rm -p 8080:8080 -v ./logs:/logs -e OLLAMA_URL=$OLLAMA_URL m600/demo-api-gateway:latest
 ```
+Note that if you're on Apple Silicon, pull using `docker pull --platform linux/amd64 m600/demo-api-gateway`
 
 Alternatively, if you want to run a local version:
 ```
@@ -86,3 +87,20 @@ kubectl port-forward svc/demo-demo-api-gateway 8080:8080
 Timeframe to do it is four hours (more or less) with my own knowledge. All feature simply couldn't be added without testing since CI/CD part must also be done (and quickly learn Github Actions syntax), no AI "vibe coding" has been used.
 
 I'd rather deliver something simple but tested rather than checking all boxes and not knowning why each line of code exist (*"focus on quality and readability"*).
+
+### Dev improvements
+Ain't not backend dev or an expert in Python but with more time allowed, it would have been much better:
+- Proper test suite
+- an UI with flask templates
+- a database to store completion history
+- a production WSGI
+- Streaming logs and history instead of dumping the whole content
+- Monitoring, APM, etc
+- Tests, yes I said it twice
+- The list goes on and on...
+
+### Ops improvements
+- Lint app files
+- Dynamic Helm schema for values
+- Step to deploy on some internal live cluster
+- Report and notification

@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: demo-api-gateway
-          image: demo-api-gateway:latest
+          image: m600/demo-api-gateway:latest
           imagePullPolicy: IfNotPresent
           env:
             - name: OLLAMA_URL

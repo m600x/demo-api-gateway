@@ -1,6 +1,7 @@
 import os
 import logging
 import time
+import requests
 from datetime import datetime
 from flask import Flask, request, jsonify, g, has_request_context, make_response
 
@@ -36,6 +37,8 @@ def create_app() -> Flask:
     fileHandler.setFormatter(logFormatter)
     root.addHandler(fileHandler)
 
+    if not os.getenv("OLLAMA_URL", "").strip():
+        app.logger.warning("No Ollama URL has been provided, the endpoint will not forward the request")
     app.logger.warning("The app is a demo, no proper WSGI is implemented since it's not required")
 
     @app.before_request
@@ -75,6 +78,21 @@ def create_app() -> Flask:
         if not isinstance(content, str) or not content.strip():
             app.logger.error("The request doesn't contain a valid argument")
             return jsonify({"error": "Malformed or missing prompt argument"}), 400
+
+        ollama_url = os.getenv("OLLAMA_URL", "").strip()
+        if ollama_url:
+            try:
+                app.logger.info("Querying LLM with prompt: %s", content)
+                r = requests.post(ollama_url, json={"model": "llama2", "stream": False, "prompt": content})
+                r.raise_for_status()
+                response = r.json()["response"]
+                g.prompt = content
+                g.completion = response
+            except Exception as broken:
+                app.logger.error("Error while forwarding to the LLM: %s", broken)
+            return jsonify({"completion": response})
+
+        # Fallback if no Ollama URL is provided, only alter the original prompt to simulate processing
         response = []
         for i, c in enumerate(content):
             if i % 2 == 0:

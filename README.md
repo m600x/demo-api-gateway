@@ -1,5 +1,7 @@
 # Demo - API Gateway for an LLM
 
+[![ci](https://github.com/m600x/demo-api-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/m600x/demo-api-gateway/actions/workflows/ci.yml)
+
 ## Description
 This is a very basic python app that serve as an api gateway for LLM query.
 - `POST` on `/completion`, forwarded to ollama or send an altered prompt
@@ -15,6 +17,8 @@ Built using Flask, it support the following:
 As for the Ops side (primary used Gitlab CI but since Github Actions seems to be the tool used here, I've adapted):
 - Kubernetes artifacts and Helm chart
 - CI: Test the app (pytest dummy)
+- CI: Test the Kubernetes YAML (deploy on kind)
+- CI: Test the Helm chart (deploy on kind)
 - CI: Build and push to docker hub
 
 ## Usage
@@ -75,3 +79,10 @@ kubectl set env deploy/demo-api-gateway OLLAMA_URL=http://host.minikube.internal
 helm install demo demo-api-gateway
 kubectl port-forward svc/demo-demo-api-gateway 8080:8080
 ```
+
+---
+
+## Notes
+Timeframe to do it is four hours (more or less) with my own knowledge. All feature simply couldn't be added without testing since CI/CD part must also be done (and quickly learn Github Actions syntax), no AI "vibe coding" has been used.
+
+I'd rather deliver something simple but tested rather than checking all boxes and not knowning why each line of code exist (*"focus on quality and readability"*).

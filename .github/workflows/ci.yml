@@ -69,6 +69,30 @@ jobs:
           kubectl get deployments -A
           kubectl get services -A
 
+      - name: Helm - Test chart installation
+        run: |
+          helm lint demo-api-gateway
+          helm install demo demo-api-gateway --set image.repository=$CONTAINER_NAME --set image.tag=$CONTAINER_TAG
+          kubectl rollout status deploy/demo-demo-api-gateway --timeout=120s
+          kubectl get deployments -A
+          kubectl get services -A
+
+      - name: Helm - Forward port locally and test liveness
+        run: |
+          kubectl port-forward svc/demo-demo-api-gateway 8080:8080 >/tmp/pf.log 2>&1 &
+          FORWARDER_PID=$!
+          for i in $(seq 1 15); do
+            if curl -fsS http://127.0.0.1:8080/ >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fS http://127.0.0.1:8080/
+          curl -fS http://127.0.0.1:8080/logs
+          curl -fS http://127.0.0.1:8080/history
+          kill $FORWARDER_PID || true
+          helm uninstall demo
+
   build-and-push:
     runs-on: ubuntu-latest
     needs: kubernetes-test

@@ -68,6 +68,21 @@ def create_app() -> Flask:
             app.logger.error("Error while reading log file: %s", e)
         return jsonify({"error": "Cannot access log file"}), 500
 
+    @app.post("/completion")
+    def completion():
+        payload = request.get_json(silent=True) or {}
+        content = payload.get("prompt", "")
+        if not isinstance(content, str) or not content.strip():
+            app.logger.error("The request doesn't contain a valid argument")
+            return jsonify({"error": "Malformed or missing prompt argument"}), 400
+        response = []
+        for i, c in enumerate(content):
+            if i % 2 == 0:
+                response.append(c.lower())
+            else:
+                response.append(c.upper())
+        return jsonify({"completion": "".join(response)})
+
     return app
 
 if __name__ == "__main__":

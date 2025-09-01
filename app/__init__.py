@@ -22,6 +22,9 @@ class CustomLoggingFilter(logging.Filter):
 def create_app() -> Flask:
     app = Flask(__name__)
 
+    '''
+    Logger setup
+    '''
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
     logFormatter = logging.Formatter("[%(asctime)s] [%(levelname)s] [%(source_ip)s] [%(request_id)s] %(message)s")
     os.makedirs("/logs", exist_ok=True)
@@ -44,6 +47,9 @@ def create_app() -> Flask:
         app.logger.warning("No Ollama URL has been provided, the endpoint will not forward the request")
     app.logger.warning("The app is a demo, no proper WSGI is implemented since it's not required")
 
+    '''
+    Tagging the incoming request with global variable
+    '''
     @app.before_request
     def before():
         g.request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
@@ -52,16 +58,25 @@ def create_app() -> Flask:
         g.timestamp = datetime.utcnow().isoformat() + "Z"
         app.logger.info("Incoming request")
 
+    '''
+    Marking the end of the request processing, compute the latency
+    '''
     @app.after_request
     def after(resp):
         latency = int(round((time.time() * 1000) - g.start_time))
         app.logger.info("Processing ended with a latency of %dms", latency)
         return resp
 
+    '''
+    Handle root path, returning a simple response
+    '''
     @app.get("/")
     def home():
         return jsonify({"status": "ok", "time": g.timestamp}), 200
 
+    '''
+    Serve the logs file as plain text
+    '''
     @app.get("/logs")
     def logs():
         try:
@@ -75,6 +90,10 @@ def create_app() -> Flask:
             app.logger.error("Error while reading log file: %s", e)
         return jsonify({"error": "Cannot access log file"}), 500
 
+    '''
+    Handle POST on /completion.
+    Return the LLM response or an altered prompt if unreachable
+    '''
     @app.post("/completion")
     def completion():
         payload = request.get_json(silent=True) or {}
